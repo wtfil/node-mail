@@ -1,0 +1,20 @@
+{
+    "name": "nmail",
+    "version": "0.0.1",
+    "description": "send email with nodejs",
+    "keywords": [
+        "email",
+        "nodejs",
+        "smtp"
+    ],
+    "author": {
+        "name": "Evgeniy Filatov"
+    },
+    "dependencies": {
+        "mime": "*",
+        "commander": "*"
+    },
+    "engines": {
+        "node": ">= 0.8.0"
+    }
+}
