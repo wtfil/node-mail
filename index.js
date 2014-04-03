@@ -1,4 +1,5 @@
 var net = require('net'),
+    Promise = require('davy'),
     fs = require('fs'),
     mime = require('mime'),
     MARKER = 'AttachMarker',
@@ -6,6 +7,7 @@ var net = require('net'),
 
 function getAuthCommand(options) {
     var userName = options.from.split('@')[0];
+    console.log(options.from);
     return 'AUTH PLAIN ' + new Buffer([userName, userName, options.password].join("\0")).toString('base64');
 }
 
@@ -44,33 +46,28 @@ function getMessageText(options) {
 }
 
 
-function Smpt(options) {
-    options.host = options.host || 'smtp' + options.from.split('@')[0];
+function Smtp(options) {
     this._working = true;
     this._options = options;
     net.Socket.call(this, options);
-    this.connect(options);
+    console.log(options);
+    /*this.connect(options);*/
 }
 
-Smpt.prototype = Object.create(net.Socket.prototype);
+Smtp.prototype = Object.create(net.Socket.prototype);
 
-Smpt.prototype._nextMessage = function (text, options) {
+Smtp.prototype._nextMessage = function (text, options) {
     
     if (text.match(/503/)) {
-        if (this._tryLogin) {
-            this._working = false;
-            this.emit('error', new Error('Unsuccessful auth'));
-            return null;
-        }
-        this._tryLogin = true;
-        return getAuthCommand(options);
+        this._working = false;
+        this.emit('error', new Error('Unsuccessful auth'));
     }
     if (text.match(/334/)) {
     }
     return null;
 };
 
-Smpt.prototype.send = function (options) {
+Smtp.prototype.send = function (options) {
     var _this = this,
         messages = [
             'HELO test-client',
@@ -103,14 +100,28 @@ Smpt.prototype.send = function (options) {
         });
 };
 
+function findSMTPHost(options) {
+    if (options.host) {
+        return new Promise(options.host);
+    }
+    return new Promise('smtp.' + options.from.split('@')[1]);
+}
+
 
 function send(options) {
-    var client = new Smpt({
-        host: options.smpt,
-        port: 25
+    
+    var client = new Smtp(options);
+
+    findSMTPHost(options).then(function (smtp) {
+        client
+            .connect({
+                host: smtp,
+                port: 25
+            })
+            .send(options);
     });
 
-    client.send(options)
+    return client
         .on('send', function () {
             console.log('successful send');
             client.destroy();
@@ -122,4 +133,5 @@ function send(options) {
 
 }
 
-exports.send = send;
+send.Smtp = Smtp;
+module.exports = send;
