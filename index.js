@@ -78,22 +78,28 @@ Smtp.prototype.send = function (options) {
             'RCPT TO:<' + options.to + '>',
             'DATA',
             getMessageText(options)
-        ].filter(Boolean);
+        ].filter(Boolean),
+
+        index = 0;
 
     return this.on('data', function (data) {
         var text = data.toString('utf8'),
-            extraMessages = _this._nextMessage(text, options);
+            message = _this._nextMessage(text, options);
 
-        console.log('S: ' + text);
         if (!_this.writable) {
             return;
         }
-        if (extraMessages) {
-            messages.unshift(extraMessages);
+
+        if (message) {
+            index --;
+        } else {
+            message = messages[index ++];
         }
-        if (messages.length) {
-            console.log('C: ' + messages[0]);
-            _this.write(messages.shift() + CR);
+
+        console.log('S: ' + text);
+        if (message) {
+            console.log('C: ' + message);
+            _this.write(message + CR);
         } else {
             _this.emit('send');
         }
