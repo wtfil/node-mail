@@ -6,8 +6,10 @@ var net = require('net'),
     CR = "\r\n";
 
 function getAuthCommand(options) {
+    if (!options.password) {
+        return;
+    }
     var userName = options.from.split('@')[0];
-    console.log(options.from);
     return 'AUTH PLAIN ' + new Buffer([userName, userName, options.password].join("\0")).toString('base64');
 }
 
@@ -50,19 +52,19 @@ function Smtp(options) {
     this._working = true;
     this._options = options;
     net.Socket.call(this, options);
-    console.log(options);
-    /*this.connect(options);*/
 }
 
 Smtp.prototype = Object.create(net.Socket.prototype);
 
 Smtp.prototype._nextMessage = function (text, options) {
+    var code = Number(text.split(' ')[0]);
     
-    if (text.match(/503/)) {
-        this._working = false;
-        this.emit('error', new Error('Unsuccessful auth'));
+    if (code === 503) {
+        this.writable = false;
+        this.emit('error', new Error('Smtp server "' + options.smtp + '" required authorization'));
     }
-    if (text.match(/334/)) {
+    if (code === 530) {
+        return 'STARTTLS';
     }
     return null;
 };
@@ -76,35 +78,57 @@ Smtp.prototype.send = function (options) {
             'RCPT TO:<' + options.to + '>',
             'DATA',
             getMessageText(options)
-        ];
+        ].filter(Boolean);
 
-    return this
-        .on('connect', function () {
-            console.log('connected to ' + _this._options.host);
-        })
-        .on('data', function (data) {
-            var text = data.toString('utf8'),
-                extraMessages = _this._nextMessage(text, options);
+    return this.on('data', function (data) {
+        var text = data.toString('utf8'),
+            extraMessages = _this._nextMessage(text, options);
 
-            if (!_this._working) {
-                return;
-            }
-            if (extraMessages) {
-                messages.unshift(extraMessages);
-            }
-            if (messages.length) {
-                _this.write(messages.shift() + CR);
-            } else {
-                _this.emit('send');
-            }
-        });
+        console.log('S: ' + text);
+        if (!_this.writable) {
+            return;
+        }
+        if (extraMessages) {
+            messages.unshift(extraMessages);
+        }
+        if (messages.length) {
+            console.log('C: ' + messages[0]);
+            _this.write(messages.shift() + CR);
+        } else {
+            _this.emit('send');
+        }
+    });
 };
 
+function testSocket(port, host) {
+    var client = net.connect(port, host),
+        promise = new Promise();
+
+    client
+        .on('connect', function () {
+            console.log(1);
+            promise.fulfill(true);
+            client.destroy();
+        })
+        .on('error', function () {
+            console.log(2);
+            promise.fulfill(false);
+            client.destroy();
+        });
+
+    return promise;
+}
+
 function findSMTPHost(options) {
-    if (options.host) {
-        return new Promise(options.host);
+    if (options.smtp) {
+        return new Promise(options.smtp);
     }
-    return new Promise('smtp.' + options.from.split('@')[1]);
+    return testSocket(25).then(function (exist) {
+        if (exist) {
+            return 'localhost';
+        }
+        return 'smtp.' + options.from.split('@')[1];
+    });
 }
 
 
@@ -113,22 +137,21 @@ function send(options) {
     var client = new Smtp(options);
 
     findSMTPHost(options).then(function (smtp) {
+        //TODO fix it
+        options.smtp = smtp;
         client
             .connect({
                 host: smtp,
                 port: 25
             })
             .send(options);
+    }, function (e) {
+        client.emit('error', e);
     });
 
     return client
-        .on('send', function () {
-            console.log('successful send');
-            client.destroy();
-        })
-        .on('error', function (e) {
-            console.error(e.stack);
-            client.destroy();
+        .on('exit', function () {
+            console.log('exit');
         });
 
 }
