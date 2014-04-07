@@ -29,9 +29,9 @@ options = ['file', 'smtp', 'text', 'from', 'to', 'password'].reduce(function (o,
 }, {});
 options.text = program.args[0];
 
-console.log(options);
 mail(options)
     .on('send', function () {
+        this.destroy();
         console.log('successful send');
     })
     .on('exit', function () {

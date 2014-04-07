@@ -47,6 +47,59 @@ function getMessageText(options) {
     return message.join(CR);
 }
 
+/**
+ * SMPT message pull
+ *
+ * @param {Object} options
+ * @param {String} options.from
+ * @param {String} options.to
+ * @param {String} options.smtp required for right error messages
+ * @param {String} [options.password]
+ * @param {String} [options.subject]
+ * @param {String} [options.text]
+ * @param {String} [options.date]
+ * @param {String} [options.filename]
+ */
+function MessagesPull(options) {
+    this._options = options;
+    this._messages =  [
+        'HELO test-client',
+        getAuthCommand(options),
+        'MAIL FROM:<' + options.from + '>',
+        'RCPT TO:<' + options.to + '>',
+        'DATA',
+        getMessageText(options)
+    ].filter(Boolean);
+
+    this._index = 0;
+}
+
+
+/**
+ * Getting next message based on SMTP server response
+ * @see http://www.greenend.org.uk/rjk/tech/smtpreplies.html
+ * @param {String} text
+ *
+ * @returns {Error|String|Null} next message or Error object or null if no message left
+ */
+MessagesPull.prototype.next = function (text) {
+    var code = Number(text.split(' ')[0]);
+    
+    if ([220, 250, 235, 354].indexOf(code) !== -1) {
+        return this._messages[this._index ++] || null;
+    }
+
+    // one message back to resent it
+    this._index --;
+
+    if (code === 503) {
+        return new Error('Smtp server "' + options.smtp + '" required authorization');
+    }
+    if (code === 530) {
+        return 'STARTTLS';
+    }
+};
+
 
 function Smtp(options) {
     this._working = true;
@@ -56,50 +109,22 @@ function Smtp(options) {
 
 Smtp.prototype = Object.create(net.Socket.prototype);
 
-Smtp.prototype._nextMessage = function (text, options) {
-    var code = Number(text.split(' ')[0]);
-    
-    if (code === 503) {
-        this.writable = false;
-        this.emit('error', new Error('Smtp server "' + options.smtp + '" required authorization'));
-    }
-    if (code === 530) {
-        return 'STARTTLS';
-    }
-    return null;
-};
-
 Smtp.prototype.send = function (options) {
     var _this = this,
-        messages = [
-            'HELO test-client',
-            getAuthCommand(options),
-            'MAIL FROM:<' + options.from + '>',
-            'RCPT TO:<' + options.to + '>',
-            'DATA',
-            getMessageText(options)
-        ].filter(Boolean),
-
-        index = 0;
+        messages = new MessagesPull(options);
 
     return this.on('data', function (data) {
         var text = data.toString('utf8'),
-            message = _this._nextMessage(text, options);
-
-        if (!_this.writable) {
-            return;
-        }
-
-        if (message) {
-            index --;
-        } else {
-            message = messages[index ++];
-        }
+            message = messages.next(text);
 
         console.log('S: ' + text);
         if (message) {
-            console.log('C: ' + message);
-            _this.write(message + CR);
+            if (message instanceof Error) {
+                _this.emit('error', message);
+            } else {
+                console.log('C: ' + message);
+                _this.write(message + CR);
+            }
         } else {
             _this.emit('send');
         }
@@ -112,12 +137,10 @@ function testSocket(port, host) {
 
     client
         .on('connect', function () {
-            console.log(1);
             promise.fulfill(true);
             client.destroy();
         })
         .on('error', function () {
-            console.log(2);
             promise.fulfill(false);
             client.destroy();
         });
@@ -155,10 +178,7 @@ function send(options) {
         client.emit('error', e);
     });
 
-    return client
-        .on('exit', function () {
-            console.log('exit');
-        });
+    return client;
 
 }
 
