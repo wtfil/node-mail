@@ -15,6 +15,10 @@
         "commander": "*",
         "davy": "*"
     },
+    "main": "index",
+    "bin": {
+        "nmail": "./bin/sendmail"
+    },
     "engines": {
         "node": ">= 0.8.0"
     }
