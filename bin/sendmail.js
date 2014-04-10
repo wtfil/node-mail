@@ -11,11 +11,11 @@ var program = require('commander'),
 
 program
     .version(require('../package.json').version)
-    .option('-f, --from [value]', 'sender email')
-    .option('-p, --password [value]', 'your password')
-    .option('-t, --to [value]', 'receiver email')
-    .option('-s, --smtp [value]', 'smtp server hostname')
-    .option('--file [value]', 'attach file')
+    .option('-f, --from [value]', 'Email sender')
+    .option('-p, --password [value]', 'Sender password. If set the authorization command will be send')
+    .option('-t, --to [value]', 'Email receiver ')
+    .option('-s, --smtp [value]', 'SMTP server. Change smtp server (default localhost or sender`s mail provider)')
+    .option('--file [value]', 'Attach file to email')
     .parse(process.argv);
 
 
