@@ -1,7 +1,8 @@
 {
     "name": "nmail",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "description": "send email with nodejs",
+    "preferGlobal": "true",
     "keywords": [
         "email",
         "nodejs",
@@ -15,9 +16,9 @@
         "commander": "*",
         "davy": "*"
     },
-    "main": "index",
+    "main": "index.js",
     "bin": {
-        "nmail": "./bin/sendmail"
+        "nmail": "./bin/sendmail.js"
     },
     "engines": {
         "node": ">= 0.8.0"
