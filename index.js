@@ -83,21 +83,34 @@ function MessagesPull(options) {
  * @returns {Error|String|Null} next message or Error object or null if no message left
  */
 MessagesPull.prototype.next = function (text) {
-    var code = Number(text.split(' ')[0]);
-    
-    if ([220, 250, 235, 354].indexOf(code) !== -1) {
-        return this._messages[this._index ++] || null;
+    var code = Number(text.split(' ')[0]),
+        result = {
+            isLast: false,
+            error: null,
+            message: null
+        };
+
+    if (this._index === this._messages.length && code === 250) {
+        result.isLast = true;
+        return result;
+    }
+
+    if ([220, 235, 250, 354].indexOf(code) !== -1) {
+        result.message = this._messages[this._index ++] || null;
+        return result;
     }
 
     // one message back to resent it
     this._index --;
 
     if (code === 503) {
-        return new Error('Smtp server "' + options.smtp + '" required authorization');
+        result.error = new Error('Smtp server "' + this._options.smtp + '" required authorization');
     }
     if (code === 530) {
-        return 'STARTTLS';
+        result.message = 'STARTTLS';
     }
+
+    return result;
 };
 
 
@@ -113,26 +126,28 @@ Smtp.prototype.send = function (options) {
     var _this = this,
         messages = new MessagesPull(options);
 
-    return this.on('data', function (data) {
-        var text = data.toString('utf8'),
-            message = messages.next(text);
+    return this
+        .on('data', function (data) {
+            var text = data.toString('utf8'),
+                next = messages.next(text);
 
-        console.log('S: ' + text);
-        if (message) {
-            if (message instanceof Error) {
-                _this.emit('error', message);
-            } else {
-                console.log('C: ' + message);
-                _this.write(message + CR);
+            console.log('S: ' + text);
+            console.log('C: ' + next.message);
+            if (next.message) {
+                this.write(next.message + CR);
+            } else if (next.error) {
+                this.emit('error', next.error);
+            } else if (next.isLast) {
+                this.emit('send');
             }
-        } else {
-            _this.emit('send');
-        }
-    });
+        });
 };
 
 function testSocket(port, host) {
-    var client = net.connect(port, host),
+    var client = net.connect({
+        port: port,
+        host: host
+    }),
         promise = new Promise();
 
     client
@@ -152,7 +167,7 @@ function findSMTPHost(options) {
     if (options.smtp) {
         return new Promise(options.smtp);
     }
-    return testSocket(25).then(function (exist) {
+    return testSocket(25, 'localhost').then(function (exist) {
         if (exist) {
             return 'localhost';
         }

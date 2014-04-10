@@ -5,6 +5,7 @@
  */
 
 var program = require('commander'),
+    path = require('path'),
     mail = require('../'),
     options;
 
@@ -14,6 +15,7 @@ program
     .option('-p, --password [value]', 'your password')
     .option('-t, --to [value]', 'receiver email')
     .option('-s, --smtp [value]', 'smtp server hostname')
+    .option('--file [value]', 'attach file')
     .parse(process.argv);
 
 
@@ -27,15 +29,16 @@ options = ['file', 'smtp', 'text', 'from', 'to', 'password'].reduce(function (o,
     }
     return o;
 }, {});
+
+if (program.file) {
+    options.file = path.join(process.cwd(), program.file);
+}
 options.text = program.args[0];
 
 mail(options)
     .on('send', function () {
         this.destroy();
         console.log('successful send');
-    })
-    .on('exit', function () {
-        console.log('drain');
     })
     .on('error', function (e) {
         console.error('\033[0;31mError:\033[0m ', e.message);
