@@ -1,6 +1,6 @@
 {
     "name": "nmail",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "send email with nodejs",
     "preferGlobal": "true",
     "keywords": [
@@ -12,9 +12,9 @@
         "name": "Evgeniy Filatov"
     },
     "dependencies": {
-        "mime": "*",
-        "commander": "*",
-        "davy": "*"
+        "mime": "1.2.11",
+        "commander": "2.2.0",
+        "davy": "0.2.2"
     },
     "main": "index.js",
     "bin": {
