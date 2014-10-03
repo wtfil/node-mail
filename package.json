@@ -1,26 +1,35 @@
 {
-  "name": "nmail",
-  "version": "0.0.4",
-  "description": "send email with nodejs",
-  "preferGlobal": "true",
-  "keywords": [
-    "email",
-    "nodejs",
-    "smtp"
-  ],
-  "author": {
-    "name": "Evgeniy Filatov"
-  },
-  "dependencies": {
-    "commander": "2.2.0",
-    "davy": "^0.3.3",
-    "mime": "1.2.11"
-  },
-  "main": "index.js",
-  "bin": {
-    "nmail": "./bin/sendmail.js"
-  },
-  "engines": {
-    "node": ">= 0.8.0"
-  }
+	"name": "nmail",
+	"version": "0.0.4",
+	"description": "send email with nodejs",
+	"preferGlobal": "true",
+	"keywords": [
+		"email",
+		"nodejs",
+		"smtp"
+	],
+	"author": {
+		"name": "Evgeniy Filatov"
+	},
+	"dependencies": {
+		"commander": "2.2.0",
+		"davy": "^0.3.3",
+		"mime": "1.2.11"
+	},
+	"devDependencies": {
+		"simplesmtp": "*",
+		"mailparser": "*",
+		"mocha": "*",
+		"chai": "*"
+	},
+	"scripts": {
+		"test": "npm install --save-dev && ./node_modules/.bin/mocha index.test.js"
+	},
+	"main": "index.js",
+	"bin": {
+		"nmail": "./bin/sendmail.js"
+	},
+	"engines": {
+	"node": ">= 0.8.0"
+	}
 }

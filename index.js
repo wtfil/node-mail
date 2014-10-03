@@ -25,8 +25,11 @@ Smtp.prototype.send = function (options) {
                 this.write(next.message + CR);
             } else if (next.error) {
                 this.emit('error', next.error);
-            } else if (next.isLast) {
-                this.emit('sent', messages.id);
+            }
+            if (next.isLast) {
+            	setTimeout(function () {
+                	this.emit('sent', messages.id);
+            	}.bind(this));
             }
         });
 };
